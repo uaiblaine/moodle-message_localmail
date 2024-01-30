@@ -36,3 +36,7 @@ Check code:
 cd message/output/localmail
 phpcs .
 ```
+
+## Changelog file
+
+Changelog file uses the format from [Keep a Changelog](https://keepachangelog.com).

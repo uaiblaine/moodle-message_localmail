@@ -1,10 +1,13 @@
 # Local Mail notification plugin for Moodle
 
-This plugin allows using Local Mail as a message processor for notifications that meet the following conditions:
+This plugin allows using the [Local Mail plugin](https://moodle.org/plugins/local_mail) as a message consumer.
+
+Currently, due to limitations of Local Mail, it only processes notifications that meet the following conditions:
 - Course is not the front page.
-- Sender and recipient are not fake users.
+- Sender and recipient are real users.
 - Sender and recipient are not the same user.
-- Notification is not sent by Local Mail.
+
+By default, all notification preferences are disabled and locked. They need to be enabled at the site administration.
 
 ## Installation
 
@@ -18,6 +21,8 @@ https://docs.moodle.org/401/en/Installing_plugins
 See: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Credits
+
+Maintainer: Albert Gasset <albertgasset@fsfe.org>
 
 Implemented by the "Recovery, Transformation and Resilience Plan". Funded by the European Union - Next Generation EU. Produced by the UNIMOODLE University Group: Universities of Valladolid, Complutense de Madrid, UPV/EHU, León, Salamanca, Illes Balears, València, Rey Juan Carlos, La Laguna, Zaragoza, Málaga, Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria and Burgos.
 
