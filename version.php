@@ -26,6 +26,7 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -36,7 +37,7 @@ $plugin->version = 2024013000;
 $plugin->requires  = 2022112800;
 $plugin->component = 'message_localmail';
 $plugin->dependencies = [
-    'local_mail' => 2024012900,
+    'local_mail' => 2025031300,
 ];
 $plugin->maturity = MATURITY_STABLE;
 $plugin->release = '1.0';

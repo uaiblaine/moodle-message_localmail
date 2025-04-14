@@ -26,6 +26,7 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -47,8 +48,8 @@ class message_output_localmail extends message_output {
         $stringmanager = get_string_manager();
 
         $course = \local_mail\course::get($eventdata->courseid, IGNORE_MISSING);
-        $sender = \local_mail\user::get($eventdata->userfrom->id, IGNORE_MISSING);
-        $recipient = \local_mail\user::get($eventdata->userto->id, IGNORE_MISSING);
+        $sender = \local_mail\user::get($eventdata->userfrom->id);
+        $recipient = \local_mail\user::get($eventdata->userto->id);
         $lang = !empty($eventdata->userto->lang) ? $eventdata->userto->lang : $CFG->lang;
         $subject = trim($eventdata->subject ?? '');
         $fullmessage = trim($eventdata->fullmessage ?? '');
@@ -65,7 +66,7 @@ class message_output_localmail extends message_output {
             return true;
         }
 
-        if (!$sender || !$recipient || $sender->id == $recipient->id) {
+        if ($sender->id <= 0 || $recipient->id <= 0 || $sender->id == $recipient->id) {
             // Ignore notifications with fake users or with same sender and recipient.
             return true;
         }
