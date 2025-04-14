@@ -26,6 +26,7 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -33,15 +34,18 @@
 namespace message_localmail;
 
 /**
+ * Unit tests for Local Mail message processor.
+ *
  * @covers \xmldb_message_localmail_install
  */
-class db_install_test extends \advanced_testcase {
+final class db_install_test extends \advanced_testcase {
     public function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest(true);
         $this->setAdminUser();
     }
 
-    public function test_db_install() {
+    public function test_db_install(): void {
         global $CFG, $DB;
 
         $DB->delete_records('message_processors', ['name' => 'localmail']);

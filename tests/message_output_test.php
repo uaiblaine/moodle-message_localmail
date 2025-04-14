@@ -26,6 +26,7 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -38,15 +39,18 @@ use local_mail\message_search;
 use local_mail\user;
 
 /**
+ * Unit tests for Local Mail message processor.
+ *
  * @covers \message_output_localmail
  */
-class message_output_test extends \advanced_testcase {
+final class message_output_test extends \advanced_testcase {
     public function setUp(): void {
+        parent::setUp();
         $this->resetAfterTest(true);
         $this->setAdminUser();
     }
 
-    public function test_send_message() {
+    public function test_send_message(): void {
         global $CFG, $USER;
 
         $this->setAdminUser();
@@ -262,19 +266,19 @@ class message_output_test extends \advanced_testcase {
         self::assertEquals(0, $search->count());
     }
 
-    public function test_load_data() {
+    public function test_load_data(): void {
         $processor = get_message_processor('localmail');
         $preferences = new \stdClass();
         self::assertNull($processor->load_data($preferences, 0));
         self::assertEquals(new \stdClass(), $preferences);
     }
 
-    public function test_config_form() {
+    public function test_config_form(): void {
         $processor = get_message_processor('localmail');
         self::assertNull($processor->config_form([]));
     }
 
-    public function test_process_form() {
+    public function test_process_form(): void {
         $processor = get_message_processor('localmail');
         $form = new \stdClass();
         $preferences = new \stdClass();
@@ -282,12 +286,12 @@ class message_output_test extends \advanced_testcase {
         self::assertEquals(new \stdClass(), $preferences);
     }
 
-    public function test_get_default_messaging_settings() {
+    public function test_get_default_messaging_settings(): void {
         $processor = get_message_processor('localmail');
         self::assertEquals(MESSAGE_DISALLOWED, $processor->get_default_messaging_settings());
     }
 
-    public function test_has_message_preferences() {
+    public function test_has_message_preferences(): void {
         $processor = get_message_processor('localmail');
         self::assertFalse($processor->has_message_preferences());
     }

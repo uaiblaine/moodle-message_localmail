@@ -26,10 +26,14 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/**
+ * Install the Local Mail message processor.
+ */
 function xmldb_message_localmail_install() {
     global $DB;
 

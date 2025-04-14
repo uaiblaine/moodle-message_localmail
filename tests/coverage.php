@@ -24,15 +24,20 @@
 /**
  * Version details
  *
- * @package    local_mail
+ * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Coverage information for Local Mail message processors.
+ */
 class message_localmail_coverage extends phpunit_coverage_info {
+    /** @var array The list of files relative to the plugin root to include in coverage generation. */
     protected $includelistfiles = [
         'db/install.php',
         'message_output_localmail.php',

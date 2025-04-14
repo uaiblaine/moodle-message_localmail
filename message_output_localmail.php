@@ -35,7 +35,13 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/message/output/lib.php');
 
+/**
+ * Local Mail message processor
+ */
 class message_output_localmail extends message_output {
+    /**
+     * {@inheritDoc}
+     */
     public function send_message($eventdata) {
         global $CFG, $DB, $USER;
 
@@ -117,23 +123,37 @@ class message_output_localmail extends message_output {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function load_data(&$preferences, $userid) {
         // No preferences.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function config_form($preferences) {
         // No preferences.
         return null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function process_form($form, &$preferences) {
         // No preferences.
     }
-
+    /**
+     * {@inheritDoc}
+     */
     public function get_default_messaging_settings() {
         return MESSAGE_DISALLOWED;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function has_message_preferences() {
         return false;
     }
