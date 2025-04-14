@@ -33,11 +33,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024013000;
+$plugin->version = 2025041400;
 $plugin->requires  = 2022112800;
 $plugin->component = 'message_localmail';
 $plugin->dependencies = [
     'local_mail' => 2025031300,
 ];
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0';
+$plugin->release = '1.1';

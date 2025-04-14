@@ -29,6 +29,7 @@ Implemented by the "Recovery, Transformation and Resilience Plan". Funded by the
 ## Copyright
 
 © 2024 Proyecto UNIMOODLE <direccion.area.estrategia.digital@uva.es>
+© 2025 Albert Gasset <albertgasset@fsfe.org>
 
 ## License
 
