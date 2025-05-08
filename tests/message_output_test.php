@@ -78,12 +78,12 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->smallmessage = 'Small message &';
         $eventdata->timecreated = make_timestamp(2021, 10, 11, 12, 0);
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         $message = current($search->get(0, 1));
         self::assertNotFalse($message);
-        self::assertEquals($course, $message->get_course());
+        self::assertEquals($course, $message->course);
         self::assertEquals('Subject', $message->subject);
         self::assertEquals("<p>Full message</p>", $message->content);
         self::assertEquals(FORMAT_HTML, $message->format);
@@ -91,10 +91,10 @@ final class message_output_test extends \advanced_testcase {
         self::assertFalse($message->draft);
         self::assertEquals($eventdata->timecreated, $message->time);
         self::assertEquals([], $message->get_references());
-        self::assertEquals($user1, $message->get_sender());
-        self::assertEquals([$user2], $message->get_recipients(message::ROLE_TO));
-        self::assertEquals([], $message->get_recipients(message::ROLE_CC));
-        self::assertEquals([], $message->get_recipients(message::ROLE_BCC));
+        self::assertEquals($user1, $message->sender());
+        self::assertEquals([$user2], $message->recipients(message::ROLE_TO));
+        self::assertEquals([], $message->recipients(message::ROLE_CC));
+        self::assertEquals([], $message->recipients(message::ROLE_BCC));
         self::assertFalse($message->unread($user1));
         self::assertTrue($message->unread($user2));
         self::assertFalse($message->starred($user1));
@@ -122,7 +122,7 @@ final class message_output_test extends \advanced_testcase {
             $eventdata->userto->lang = $lang;
             $eventdata->subject = '';
 
-            message::delete_course($course->get_context());
+            message::delete_course_data($course->get_context());
             self::assertTrue($processor->send_message($eventdata));
 
             $message = current($search->get(0, 1));
@@ -142,7 +142,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->fullmessage = 'Full message &';
         $eventdata->fullmessageformat = FORMAT_PLAIN;
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         $message = current($search->get(0, 1));
@@ -162,7 +162,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->fullmessageformat = FORMAT_PLAIN;
         $eventdata->smallmessage = 'Small message &';
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         $message = current($search->get(0, 1));
@@ -189,7 +189,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->attachment = $fs->create_file_from_string($filerecord, 'file content');
         $eventdata->attachname = 'attachment.txt';
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         $message = current($search->get(0, 1));
@@ -221,7 +221,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->userfrom = \core_user::get_user(\core_user::NOREPLY_USER);
         $eventdata->userto = \core_user::get_user($user2->id);
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         self::assertEquals(0, $search->count());
@@ -234,7 +234,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->userfrom = \core_user::get_user($user1->id);
         $eventdata->userto = \core_user::get_user(\core_user::NOREPLY_USER);
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         self::assertEquals(0, $search->count());
@@ -247,7 +247,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->userfrom = \core_user::get_user($user2->id);
         $eventdata->userto = \core_user::get_user($user2->id);
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         self::assertEquals(0, $search->count());
@@ -260,7 +260,7 @@ final class message_output_test extends \advanced_testcase {
         $eventdata->userfrom = \core_user::get_user($user1->id);
         $eventdata->userto = \core_user::get_user($user2->id);
 
-        message::delete_course($course->get_context());
+        message::delete_course_data($course->get_context());
         self::assertTrue($processor->send_message($eventdata));
 
         self::assertEquals(0, $search->count());

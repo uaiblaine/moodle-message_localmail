@@ -53,7 +53,12 @@ class message_output_localmail extends message_output {
         $fs = get_file_storage();
         $stringmanager = get_string_manager();
 
-        $course = \local_mail\course::get($eventdata->courseid, IGNORE_MISSING);
+        if ($eventdata->courseid == SITEID) {
+            // Ignore notifications in the site course.
+            return true;
+        }
+
+        $course = \local_mail\course::get($eventdata->courseid);
         $sender = \local_mail\user::get($eventdata->userfrom->id);
         $recipient = \local_mail\user::get($eventdata->userto->id);
         $lang = !empty($eventdata->userto->lang) ? $eventdata->userto->lang : $CFG->lang;
@@ -66,11 +71,6 @@ class message_output_localmail extends message_output {
         $attachname = clean_filename($eventdata->attachname ?? '');
         $timecreated = !empty($eventdata->timecreated) ? $eventdata->timecreated : time();
         $usercontext = \context_user::instance($USER->id);
-
-        if (!$course) {
-            // Ignore notifications in the site course.
-            return true;
-        }
 
         if ($sender->id <= 0 || $recipient->id <= 0 || $sender->id == $recipient->id) {
             // Ignore notifications with fake users or with same sender and recipient.
