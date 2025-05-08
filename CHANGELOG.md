@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2] - 2025-05-08
+
+### Fixed
+
+- Compatibility with Local Mail v2.15+.
+
 ## [1.1] - 2025-04-14
 
 ### Fixed
