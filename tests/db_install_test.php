@@ -54,6 +54,8 @@ final class db_install_test extends \advanced_testcase {
 
         self::assertTrue(xmldb_message_localmail_install());
 
-        self::assertTrue($DB->record_exists('message_processors', ['name' => 'localmail']));
+        // Exactly one row: a second would make the processor appear twice in the
+        // messaging settings and be dispatched to twice per notification.
+        self::assertSame(1, $DB->count_records('message_processors', ['name' => 'localmail']));
     }
 }
