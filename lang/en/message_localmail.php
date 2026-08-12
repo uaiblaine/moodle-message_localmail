@@ -26,9 +26,11 @@
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
+ * @copyright  2026 Anderson Blaine
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['notification'] = 'Notification';
 $string['pluginname'] = 'Local Mail';
+$string['privacy:metadata'] = 'The Local Mail message processor stores no personal data of its own. It delivers notifications into the Local Mail plugin, which stores, exports and deletes them under its own privacy provider. As with any message sent through Local Mail, a copy of each delivered notification also remains visible to the user it was sent from.';
