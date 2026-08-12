@@ -39,6 +39,7 @@ defined('MOODLE_INTERNAL') || die();
 class message_localmail_coverage extends phpunit_coverage_info {
     /** @var array The list of files relative to the plugin root to include in coverage generation. */
     protected $includelistfiles = [
+        'classes/privacy/provider.php',
         'db/install.php',
         'message_output_localmail.php',
     ];
