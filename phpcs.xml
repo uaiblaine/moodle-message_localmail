@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ruleset name="message_localmail">
+    <description>PHPCS rules for message_localmail.</description>
+
+    <!--
+        moodle-extra is upstream's deliberate opt-in and is kept: it is strictly
+        additive over the base standard. Note it only affects a local `phpcs .`
+        run — moodle-plugin-ci invokes phpcs with a hardcoded `--standard=moodle`,
+        which suppresses ruleset auto-discovery, so CI never reads this file.
+    -->
+    <rule ref="moodle" />
+    <rule ref="moodle-extra" />
+
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+</ruleset>

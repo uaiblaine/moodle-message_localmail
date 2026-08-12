@@ -22,11 +22,12 @@
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 
 /**
- * Version details
+ * Local Mail message processor.
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
  * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
+ * @copyright  2026 Anderson Blaine
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -40,7 +41,16 @@ require_once($CFG->dirroot . '/message/output/lib.php');
  */
 class message_output_localmail extends message_output {
     /**
-     * {@inheritDoc}
+     * Processes a notification and delivers it to the recipient's Local Mail mailbox.
+     *
+     * Notifications that Local Mail cannot represent are skipped rather than reported
+     * as failures, because returning false makes core log a delivery error for a
+     * condition that is expected and permanent.
+     *
+     * @see message_send()
+     * @param \stdClass $eventdata Event data submitted by the message provider to
+     *                             message_send(), plus $eventdata->savedmessageid.
+     * @return bool Always true.
      */
     public function send_message($eventdata) {
         global $CFG, $DB, $USER;
@@ -124,14 +134,25 @@ class message_output_localmail extends message_output {
     }
 
     /**
-     * {@inheritDoc}
+     * Loads config data from the database for the messaging preferences page.
+     *
+     * This processor exposes no user preferences, so nothing is loaded.
+     *
+     * @param array $preferences Array of user preferences.
+     * @param int $userid The user ID.
+     * @return void
      */
     public function load_data(&$preferences, $userid) {
         // No preferences.
     }
 
     /**
-     * {@inheritDoc}
+     * Creates the processor's fields on the messaging preferences page.
+     *
+     * This processor exposes no user preferences, so it contributes no fields.
+     *
+     * @param array $preferences An array of user preferences.
+     * @return ?string Always null.
      */
     public function config_form($preferences) {
         // No preferences.
@@ -139,20 +160,34 @@ class message_output_localmail extends message_output {
     }
 
     /**
-     * {@inheritDoc}
+     * Parses the submitted preferences form and saves the processor's own data.
+     *
+     * This processor exposes no user preferences, so nothing is saved.
+     *
+     * @param \stdClass $form Preferences form class.
+     * @param array $preferences Preferences array.
+     * @return void
      */
     public function process_form($form, &$preferences) {
         // No preferences.
     }
+
     /**
-     * {@inheritDoc}
+     * Returns the processor's default messaging settings.
+     *
+     * Delivery is disallowed by default: an administrator has to permit Local Mail
+     * per notification provider at the site messaging defaults.
+     *
+     * @return int The default message output settings expressed as a bit mask.
      */
     public function get_default_messaging_settings() {
         return MESSAGE_DISALLOWED;
     }
 
     /**
-     * {@inheritDoc}
+     * Returns whether this processor has configurable message preferences.
+     *
+     * @return bool Always false.
      */
     public function has_message_preferences() {
         return false;

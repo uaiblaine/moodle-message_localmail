@@ -1,0 +1,59 @@
+name: ci
+
+# workflow_dispatch is the manual escape hatch: it lets a run be launched for
+# a push whose commits would otherwise skip CI, without pushing another commit.
+#
+# CI is not the only gate: run `mdl ci moodle-message_localmail` locally before
+# pushing.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # One reusable-workflow call per supported Moodle branch (version.php
+  # $plugin->supported = [405, 502]) — update these jobs when the supported
+  # range changes, in the same commit as the version.php change. The highest
+  # branch runs the full PHP x DB matrix; older branches run one DB only.
+  #
+  # Every job installs local_mail from its main branch: this plugin references
+  # four of its classes and the tests import four more, so without it the
+  # PHPUnit leg cannot even load. Testing against a moving branch means CI will
+  # occasionally go red because of a *dependency* commit rather than one of
+  # ours. That is the intended drift alarm — this plugin has already been
+  # broken twice by local_mail API changes (see CHANGELOG 1.1 and 1.2), and a
+  # pinned tag would hide the third one until a site upgraded.
+  ci-502:
+    name: Moodle 5.02
+    uses: moodle-an-hochschulen/moodle-workflows/.github/workflows/moodle-plugin-ci.yml@main
+    with:
+      moodle-core-branch: MOODLE_502_STABLE
+      plugin-dependencies: |
+        uaiblaine/moodle-local_mail,main
+
+  ci-501:
+    name: Moodle 5.01
+    uses: moodle-an-hochschulen/moodle-workflows/.github/workflows/moodle-plugin-ci.yml@main
+    with:
+      moodle-core-branch: MOODLE_501_STABLE
+      one-db-only: true
+      plugin-dependencies: |
+        uaiblaine/moodle-local_mail,main
+
+  ci-500:
+    name: Moodle 5.00
+    uses: moodle-an-hochschulen/moodle-workflows/.github/workflows/moodle-plugin-ci.yml@main
+    with:
+      moodle-core-branch: MOODLE_500_STABLE
+      one-db-only: true
+      plugin-dependencies: |
+        uaiblaine/moodle-local_mail,main
+
+  ci-405:
+    name: Moodle 4.05
+    uses: moodle-an-hochschulen/moodle-workflows/.github/workflows/moodle-plugin-ci.yml@main
+    with:
+      moodle-core-branch: MOODLE_405_STABLE
+      one-db-only: true
+      plugin-dependencies: |
+        uaiblaine/moodle-local_mail,main

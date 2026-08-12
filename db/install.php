@@ -22,7 +22,7 @@
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 
 /**
- * Version details
+ * Install script for the Local Mail message processor.
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
