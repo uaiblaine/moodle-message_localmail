@@ -22,11 +22,12 @@
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 
 /**
- * Version details
+ * Unit tests for the Local Mail message processor install script.
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
  * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
+ * @copyright  2026 Anderson Blaine
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,9 +35,9 @@
 namespace message_localmail;
 
 /**
- * Unit tests for Local Mail message processor.
+ * Unit tests for the Local Mail message processor install script.
  *
- * @covers \xmldb_message_localmail_install
+ * @covers ::xmldb_message_localmail_install
  */
 final class db_install_test extends \advanced_testcase {
     public function setUp(): void {

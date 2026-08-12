@@ -22,11 +22,12 @@
 // Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 
 /**
- * Version details
+ * Unit tests for the Local Mail message processor.
  *
  * @package    message_localmail
  * @copyright  2024 Proyecto UNIMOODLE
  * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
+ * @copyright  2026 Anderson Blaine
  * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
