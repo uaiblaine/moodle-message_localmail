@@ -50,7 +50,8 @@ class message_output_localmail extends message_output {
      * @see message_send()
      * @param \stdClass $eventdata Event data submitted by the message provider to
      *                             message_send(), plus $eventdata->savedmessageid.
-     * @return bool Always true.
+     * @return bool True when the notification was delivered or deliberately skipped,
+     *              false when delivery was attempted and failed.
      */
     public function send_message($eventdata) {
         global $CFG, $DB, $USER;
@@ -60,17 +61,61 @@ class message_output_localmail extends message_output {
             return true;
         }
 
-        $fs = get_file_storage();
-        $stringmanager = get_string_manager();
-
-        if ($eventdata->courseid == SITEID) {
-            // Ignore notifications in the site course.
+        /*
+         * Every guard below runs before any lookup, because the lookups throw. In
+         * particular \core\message\message declares $courseid with no default and core
+         * never fills it, so an unset course id arrives here as null rather than 0:
+         * `null == SITEID` is false, and \local_mail\course::get() takes a non-nullable
+         * int, so an unnormalised null reaches it as a TypeError. TypeError is not a
+         * moodle_exception, so message_send() does not catch it and the sending task
+         * dies. Core senders that set no course id include the async backup notice and
+         * the activity due-date helpers.
+         */
+        $courseid = (int) ($eventdata->courseid ?? 0);
+        if ($courseid <= 0 || $courseid == SITEID) {
+            // Ignore notifications with no course and notifications in the site course.
             return true;
         }
 
-        $course = \local_mail\course::get($eventdata->courseid);
-        $sender = \local_mail\user::get($eventdata->userfrom->id);
-        $recipient = \local_mail\user::get($eventdata->userto->id);
+        $senderid = (int) ($eventdata->userfrom->id ?? 0);
+        $recipientid = (int) ($eventdata->userto->id ?? 0);
+        if ($senderid <= 0 || $recipientid <= 0 || $senderid == $recipientid) {
+            // Ignore notifications from internal users such as noreply, and self-notifications.
+            return true;
+        }
+
+        /*
+         * \local_mail\message_data::new() calls file_get_unused_draft_itemid(), which
+         * throws 'noguest' for a guest or unauthenticated session. Delivery genuinely
+         * cannot proceed without a real $USER, so skip rather than fail: the draft area
+         * a message is assembled in belongs to whoever is running the request.
+         */
+        if (!isloggedin() || isguestuser()) {
+            debugging('Local Mail skipped a notification: no authenticated user to build the draft in', DEBUG_DEVELOPER);
+            return true;
+        }
+
+        try {
+            $course = \local_mail\course::get($courseid);
+            $sender = \local_mail\user::get($senderid);
+            $recipient = \local_mail\user::get($recipientid);
+        } catch (\local_mail\exception $e) {
+            // The course was deleted between queueing and delivery. Nothing to deliver to.
+            debugging('Local Mail skipped a notification: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return true;
+        }
+
+        /*
+         * local_mail returns deleted and guest users with their original, positive id and
+         * a deleted flag set, so testing the id alone cannot see them.
+         */
+        if ($sender->deleted || $recipient->deleted) {
+            // Ignore notifications involving deleted or guest users.
+            return true;
+        }
+
+        $fs = get_file_storage();
+        $stringmanager = get_string_manager();
         $lang = !empty($eventdata->userto->lang) ? $eventdata->userto->lang : $CFG->lang;
         $subject = trim($eventdata->subject ?? '');
         $fullmessage = trim($eventdata->fullmessage ?? '');
@@ -80,55 +125,75 @@ class message_output_localmail extends message_output {
         $attachment = $eventdata->attachment ?? null;
         $attachname = clean_filename($eventdata->attachname ?? '');
         $timecreated = !empty($eventdata->timecreated) ? $eventdata->timecreated : time();
-        $usercontext = \context_user::instance($USER->id);
-
-        if ($sender->id <= 0 || $recipient->id <= 0 || $sender->id == $recipient->id) {
-            // Ignore notifications with fake users or with same sender and recipient.
-            return true;
-        }
+        $hasattachment = $attachname !== '' && $attachment instanceof stored_file;
+        $usercontext = $hasattachment ? \context_user::instance($USER->id) : null;
+        $draftitemid = null;
 
         $transaction = $DB->start_delegated_transaction();
 
-        // Create message data.
-        $data = \local_mail\message_data::new($course, $sender);
-        $data->to = [$recipient];
-        if ($subject !== '') {
-            $data->subject = $subject;
-        } else {
-            $data->subject = $stringmanager->get_string('notification', 'message_localmail', null, $lang);
-        }
-        $options = ['filter' => false, 'para' => false];
-        if ($fullmessagehtml !== '') {
-            $data->content = $fullmessagehtml;
-        } else if ($fullmessage !== '') {
-            $data->content = format_text($fullmessage, $fullmessageformat, $options);
-        } else {
-            $data->content = format_text($smallmessage, FORMAT_PLAIN, $options);
-        }
+        try {
+            // Create message data.
+            $data = \local_mail\message_data::new($course, $sender);
+            $draftitemid = $data->draftitemid;
+            $data->to = [$recipient];
+            if ($subject !== '') {
+                $data->subject = $subject;
+            } else {
+                $data->subject = $stringmanager->get_string('notification', 'message_localmail', null, $lang);
+            }
+            $options = ['filter' => false, 'para' => false, 'context' => $course->get_context()];
+            if ($fullmessagehtml !== '') {
+                $data->content = $fullmessagehtml;
+            } else if ($fullmessage !== '') {
+                $data->content = format_text($fullmessage, $fullmessageformat, $options);
+            } else {
+                $data->content = format_text($smallmessage, FORMAT_PLAIN, $options);
+            }
 
-        // Copy attachment to draft area.
-        if ($attachname !== '' && $attachment instanceof stored_file) {
-            $filerecord = [
-                'contextid' => $usercontext->id,
-                'component' => 'user',
-                'filearea' => 'draft',
-                'itemid' => $data->draftitemid,
-                'filepath' => '/',
-                'filename' => $attachname,
-            ];
-            $fs->create_file_from_storedfile($filerecord, $attachment);
+            // Copy attachment to draft area.
+            if ($hasattachment) {
+                $filerecord = [
+                    'contextid' => $usercontext->id,
+                    'component' => 'user',
+                    'filearea' => 'draft',
+                    'itemid' => $draftitemid,
+                    'filepath' => '/',
+                    'filename' => $attachname,
+                ];
+                $fs->create_file_from_storedfile($filerecord, $attachment);
+            }
+
+            // Create and send message.
+            $message = \local_mail\message::create($data);
+            $message->send($timecreated);
+
+            if ($hasattachment && $message->attachments < 1) {
+                // Local Mail dropped the file, most likely over its configured maxbytes.
+                debugging('Local Mail delivered a notification without its attachment: ' . $attachname, DEBUG_NORMAL);
+            }
+
+            $transaction->allow_commit();
+        } catch (\Throwable $e) {
+            /*
+             * Without this the transaction stays on $DB->transactions for the rest of the
+             * process: message_send() catches moodle_exception and returns false, so no
+             * exception handler ever calls abort_all_db_transactions(), every later
+             * notification and event is buffered instead of delivered, and the shutdown
+             * rollback discards every write made after the failure.
+             */
+            try {
+                $transaction->rollback($e);
+            } catch (\Throwable $rethrown) {
+                // The DML rollback closes the transaction and then always rethrows, by design.
+                debugging('Local Mail could not deliver a notification: ' . $rethrown->getMessage(), DEBUG_NORMAL);
+            }
+            return false;
+        } finally {
+            // Delete draft area to avoid cluttering the database, delivered or not.
+            if ($hasattachment && $draftitemid !== null) {
+                $fs->delete_area_files($usercontext->id, 'user', 'draft', $draftitemid);
+            }
         }
-
-        // Create and send message.
-        $message = \local_mail\message::create($data);
-        $message->send($timecreated);
-
-        // Delete draft area to avoid cluttering the database.
-        if ($attachname !== '' && $attachment instanceof stored_file) {
-            $fs->delete_area_files($usercontext->id, 'user', 'draft', $data->draftitemid);
-        }
-
-        $transaction->allow_commit();
 
         return true;
     }
