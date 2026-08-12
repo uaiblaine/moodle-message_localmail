@@ -45,69 +45,153 @@ use local_mail\user;
  * @covers \message_output_localmail
  */
 final class message_output_test extends \advanced_testcase {
-    public function setUp(): void {
+    /** @var \message_output $processor The processor under test. */
+    private $processor;
+
+    /** @var course $course Course the fixture users are enrolled in. */
+    private course $course;
+
+    /** @var user $sender Enrolled sender. */
+    private user $sender;
+
+    /** @var user $recipient Enrolled recipient. */
+    private user $recipient;
+
+    /**
+     * Builds a course with two enrolled users and resolves the processor.
+     *
+     * Both users are enrolled on purpose: an unenrolled recipient cannot use mail
+     * in the course, so a message delivered to them is written to the database but
+     * is invisible in their mailbox, and every assertion about delivery would pass
+     * while the recipient saw nothing.
+     *
+     * @return void
+     */
+    protected function setUp(): void {
         parent::setUp();
-        $this->resetAfterTest(true);
+        $this->resetAfterTest();
         $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $courserecord = $generator->create_course();
+        $senderrecord = $generator->create_user();
+        $recipientrecord = $generator->create_user();
+        $generator->enrol_user($senderrecord->id, $courserecord->id, 'editingteacher');
+        $generator->enrol_user($recipientrecord->id, $courserecord->id, 'student');
+
+        $this->course = new course($courserecord);
+        $this->sender = new user($senderrecord);
+        $this->recipient = new user($recipientrecord);
+        $this->processor = get_message_processor('localmail');
     }
 
-    public function test_send_message(): void {
-        global $CFG, $USER;
+    /**
+     * Builds the event data exactly as core hands it to a processor.
+     *
+     * Going through \core\message\message rather than a hand-built stdClass is the
+     * point of this helper: properties the caller never sets arrive as null, which
+     * is how the unset course id defect reaches the processor in production.
+     *
+     * @param array $properties Properties to set on the message, keyed by name.
+     * @return \stdClass Event data for the localmail processor.
+     */
+    private function eventdata(array $properties): \stdClass {
+        $message = new \core\message\message();
+        $message->component = 'moodle';
+        $message->name = 'instantmessage';
+        $message->userfrom = \core_user::get_user($this->sender->id);
+        $message->userto = \core_user::get_user($this->recipient->id);
+        $message->notification = 1;
+        foreach ($properties as $name => $value) {
+            $message->$name = $value;
+        }
+        return $message->get_eventobject_for_processor('localmail');
+    }
 
-        $this->setAdminUser();
-        $fs = get_file_storage();
-        $generator = $this->getDataGenerator();
-        $course = new course($generator->create_course());
-        $user1 = new user($generator->create_user());
-        $user2 = new user($generator->create_user());
+    /**
+     * Returns the number of Local Mail messages in the fixture course.
+     *
+     * Counting by course rather than through a recipient-bound search keeps the
+     * negative assertions honest: a search bound to one user reports zero for a
+     * message that was delivered to somebody else.
+     *
+     * @return int Number of messages stored in the course.
+     */
+    private function count_messages(): int {
+        global $DB;
 
-        $processor = get_message_processor('localmail');
-        $search = new message_search($user2);
-        $search->course = $course;
+        return $DB->count_records('local_mail_messages', ['courseid' => $this->course->id]);
+    }
 
-        // Notification with full message HTML.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-        $eventdata->subject = 'Subject';
-        $eventdata->fullmessage = "Full message &";
-        $eventdata->fullmessageformat = FORMAT_PLAIN;
-        $eventdata->fullmessagehtml = "<p>Full message</p>";
-        $eventdata->smallmessage = 'Small message &';
-        $eventdata->timecreated = make_timestamp(2021, 10, 11, 12, 0);
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
+    /**
+     * Returns the single message delivered to the recipient in the fixture course.
+     *
+     * @return message The delivered message.
+     */
+    private function delivered_message(): message {
+        $search = new message_search($this->recipient);
+        $search->course = $this->course;
         $message = current($search->get(0, 1));
-        self::assertNotFalse($message);
-        self::assertEquals($course, $message->course);
+        self::assertNotFalse($message, 'Expected exactly one message delivered to the recipient');
+        return $message;
+    }
+
+    public function test_send_message_delivers_html_notification(): void {
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'subject' => 'Subject',
+            'fullmessage' => 'Full message &',
+            'fullmessageformat' => FORMAT_PLAIN,
+            'fullmessagehtml' => '<p>Full message</p>',
+            'smallmessage' => 'Small message &',
+            'timecreated' => make_timestamp(2021, 10, 11, 12, 0),
+        ]);
+
+        self::assertTrue($this->processor->send_message($eventdata));
+
+        $message = $this->delivered_message();
+        self::assertEquals($this->course, $message->course);
         self::assertEquals('Subject', $message->subject);
-        self::assertEquals("<p>Full message</p>", $message->content);
+        self::assertEquals('<p>Full message</p>', $message->content);
         self::assertEquals(FORMAT_HTML, $message->format);
         self::assertEquals(0, $message->attachments);
         self::assertFalse($message->draft);
         self::assertEquals($eventdata->timecreated, $message->time);
         self::assertEquals([], $message->get_references());
-        self::assertEquals($user1, $message->sender());
-        self::assertEquals([$user2], $message->recipients(message::ROLE_TO));
+        self::assertEquals($this->sender, $message->sender());
+        self::assertEquals([$this->recipient], $message->recipients(message::ROLE_TO));
         self::assertEquals([], $message->recipients(message::ROLE_CC));
         self::assertEquals([], $message->recipients(message::ROLE_BCC));
-        self::assertFalse($message->unread($user1));
-        self::assertTrue($message->unread($user2));
-        self::assertFalse($message->starred($user1));
-        self::assertFalse($message->starred($user2));
-        self::assertEquals($message->deleted($user1), message::NOT_DELETED);
-        self::assertEquals($message->deleted($user2), message::NOT_DELETED);
-        self::assertEquals([], $message->get_labels($user1));
-        self::assertEquals([], $message->get_labels($user2));
+        self::assertFalse($message->unread($this->sender));
+        self::assertTrue($message->unread($this->recipient));
+        self::assertFalse($message->starred($this->sender));
+        self::assertFalse($message->starred($this->recipient));
+        self::assertEquals(message::NOT_DELETED, $message->deleted($this->sender));
+        self::assertEquals(message::NOT_DELETED, $message->deleted($this->recipient));
+        self::assertEquals([], $message->get_labels($this->sender));
+        self::assertEquals([], $message->get_labels($this->recipient));
+    }
 
-        // Notification with no subject.
+    public function test_send_message_delivers_a_message_the_recipient_can_read(): void {
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'subject' => 'Subject',
+            'fullmessagehtml' => '<p>Full message</p>',
+        ]);
 
-        foreach (['ca', 'en', 'es', 'eu', 'gl'] as $lang) {
+        self::assertTrue($this->processor->send_message($eventdata));
+
+        // Delivering a message the recipient cannot open is indistinguishable from
+        // not delivering it, so assert visibility rather than mere existence.
+        $message = $this->delivered_message();
+        self::assertTrue($this->recipient->can_view_message($message));
+        self::assertTrue($this->recipient->can_use_mail($this->course));
+    }
+
+    public function test_send_message_falls_back_to_the_localised_subject(): void {
+        global $CFG;
+
+        foreach (['ca', 'en', 'es', 'eu', 'gl', 'pt_br'] as $lang) {
             // Simulate language pack is installed.
             $langfolder = "$CFG->dataroot/lang/$lang";
             check_dir_exists($langfolder);
@@ -115,185 +199,264 @@ final class message_output_test extends \advanced_testcase {
             $stringmanager = get_string_manager();
             $stringmanager->reset_caches(true);
 
-            $eventdata = new \stdClass();
-            $eventdata->component = 'moodle';
-            $eventdata->courseid = $course->id;
-            $eventdata->userfrom = \core_user::get_user($user1->id);
-            $eventdata->userto = \core_user::get_user($user2->id);
-            $eventdata->userto->lang = $lang;
-            $eventdata->subject = '';
+            $userto = \core_user::get_user($this->recipient->id);
+            $userto->lang = $lang;
+            $eventdata = $this->eventdata([
+                'courseid' => $this->course->id,
+                'userto' => $userto,
+                'subject' => '',
+            ]);
 
-            message::delete_course_data($course->get_context());
-            self::assertTrue($processor->send_message($eventdata));
+            message::delete_course_data($this->course->get_context());
+            self::assertTrue($this->processor->send_message($eventdata));
 
-            $message = current($search->get(0, 1));
-            self::assertNotFalse($message);
             $expected = $stringmanager->get_string('notification', 'message_localmail', null, $lang);
-            self::assertEquals($expected, $message->subject);
+            self::assertEquals($expected, $this->delivered_message()->subject, "Subject for language $lang");
+        }
+    }
+
+    /**
+     * Every input format has to survive conversion and be stored as HTML.
+     *
+     * The unset case is the one that matters: the processor's own default is
+     * FORMAT_MOODLE, and no test used to reach it because every fixture set the
+     * format explicitly.
+     *
+     * Note the FORMAT_* constants are strings, not integers, so this parameter is
+     * deliberately untyped.
+     *
+     * @dataProvider fullmessageformat_provider
+     * @param ?string $format The value of $eventdata->fullmessageformat, or null to leave it unset.
+     * @return void
+     */
+    public function test_send_message_renders_every_message_format($format): void {
+        $properties = [
+            'courseid' => $this->course->id,
+            'subject' => 'Subject',
+            'fullmessage' => 'Full message &',
+        ];
+        if ($format !== null) {
+            $properties['fullmessageformat'] = $format;
         }
 
-        // Notification with no full message HTML.
+        self::assertTrue($this->processor->send_message($this->eventdata($properties)));
 
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-        $eventdata->subject = 'Subject';
-        $eventdata->fullmessage = 'Full message &';
-        $eventdata->fullmessageformat = FORMAT_PLAIN;
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
-        $message = current($search->get(0, 1));
-        self::assertNotFalse($message);
-        self::assertEquals("Full message &amp;", $message->content);
+        $message = $this->delivered_message();
+        // Local Mail stores every message as HTML whatever the notification carried.
         self::assertEquals(FORMAT_HTML, $message->format);
+        self::assertStringContainsString('Full message', $message->content);
+        // The ampersand must never reach storage as a bare, unescaped character.
+        self::assertDoesNotMatchRegularExpression('/&(?!amp;|#)/', $message->content);
+    }
 
-        // Notification with no full message.
+    /**
+     * Data provider for test_send_message_renders_every_message_format.
+     *
+     * @return array Format values, including the unset case.
+     */
+    public static function fullmessageformat_provider(): array {
+        return [
+            'plain' => [FORMAT_PLAIN],
+            'html' => [FORMAT_HTML],
+            'markdown' => [FORMAT_MARKDOWN],
+            'moodle' => [FORMAT_MOODLE],
+            'unset, processor default applies' => [null],
+        ];
+    }
 
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-        $eventdata->subject = 'Subject';
-        $eventdata->fullmessage = '';
-        $eventdata->fullmessageformat = FORMAT_PLAIN;
-        $eventdata->smallmessage = 'Small message &';
+    public function test_send_message_falls_back_to_the_small_message(): void {
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'subject' => 'Subject',
+            'fullmessage' => '',
+            'fullmessageformat' => FORMAT_PLAIN,
+            'smallmessage' => 'Small message &',
+        ]);
 
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
+        self::assertTrue($this->processor->send_message($eventdata));
+        self::assertEquals('Small message &amp;', $this->delivered_message()->content);
+    }
 
-        $message = current($search->get(0, 1));
-        self::assertNotFalse($message);
-        self::assertEquals("Small message &amp;", $message->content);
-        self::assertEquals(FORMAT_HTML, $message->format);
+    public function test_send_message_copies_the_attachment_and_cleans_the_draft_area(): void {
+        global $USER;
 
-        // Notification with attachment.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-        $eventdata->timecreated = make_timestamp(2021, 10, 11, 12, 0);
+        $fs = get_file_storage();
         $filerecord = [
-            'contextid' => \context_user::instance($user1->id)->id,
+            'contextid' => \context_user::instance($this->sender->id)->id,
             'component' => 'user',
             'filearea' => 'private',
             'itemid' => 0,
             'filepath' => '/',
             'filename' => 'file.txt',
         ];
-        $eventdata->attachment = $fs->create_file_from_string($filerecord, 'file content');
-        $eventdata->attachname = 'attachment.txt';
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'timecreated' => make_timestamp(2021, 10, 11, 12, 0),
+            'attachment' => $fs->create_file_from_string($filerecord, 'file content'),
+            'attachname' => 'attachment.txt',
+        ]);
 
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
+        self::assertTrue($this->processor->send_message($eventdata));
 
-        $message = current($search->get(0, 1));
-        self::assertNotFalse($message);
+        $message = $this->delivered_message();
         self::assertEquals(1, $message->attachments);
-        $files = $fs->get_area_files($course->get_context()->id, 'local_mail', 'message', $message->id, 'id', false);
+        $files = $fs->get_area_files($this->course->get_context()->id, 'local_mail', 'message', $message->id, 'id', false);
         self::assertCount(1, $files);
         $file = current($files);
         self::assertEquals('attachment.txt', $file->get_filename());
         self::assertEquals('file content', $file->get_content());
-        self::assertEquals([], $fs->get_area_files(\context_user::instance($USER->id)->id, 'user', 'draft', false, 'id', false));
-
-        // Invalid course.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = SITEID;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-        $eventdata->subject = 'Subject';
-
-        self::assertTrue($processor->send_message($eventdata));
-
-        // Invalid sender.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user(\core_user::NOREPLY_USER);
-        $eventdata->userto = \core_user::get_user($user2->id);
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
-        self::assertEquals(0, $search->count());
-
-        // Invalid recipient.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user(\core_user::NOREPLY_USER);
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
-        self::assertEquals(0, $search->count());
-
-        // Same sender and recipient.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'moodle';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user2->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
-        self::assertEquals(0, $search->count());
-
-        // Component is local_mail.
-
-        $eventdata = new \stdClass();
-        $eventdata->component = 'local_mail';
-        $eventdata->courseid = $course->id;
-        $eventdata->userfrom = \core_user::get_user($user1->id);
-        $eventdata->userto = \core_user::get_user($user2->id);
-
-        message::delete_course_data($course->get_context());
-        self::assertTrue($processor->send_message($eventdata));
-
-        self::assertEquals(0, $search->count());
+        $draft = $fs->get_area_files(\context_user::instance($USER->id)->id, 'user', 'draft', false, 'id', false);
+        self::assertEquals([], $draft);
     }
 
-    public function test_load_data(): void {
-        $processor = get_message_processor('localmail');
-        $preferences = new \stdClass();
-        self::assertNull($processor->load_data($preferences, 0));
-        self::assertEquals(new \stdClass(), $preferences);
+    /**
+     * An unset course id reaches a processor as null, not as zero.
+     *
+     * \core\message\message declares $courseid with no default and core never fills
+     * it, so this is the shape core hands over for the async backup notice, the
+     * failed-task callbacks and the activity due-date helpers. Before the guard was
+     * normalised this raised a TypeError inside \local_mail\course::get(), which is
+     * not a moodle_exception and therefore escaped message_send() entirely.
+     *
+     * @return void
+     */
+    public function test_send_message_skips_a_notification_with_no_course(): void {
+        // Control: the same event data with a course id is delivered.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+
+        self::assertTrue($this->processor->send_message($this->eventdata([])));
+
+        self::assertEquals(1, $this->count_messages());
     }
 
-    public function test_config_form(): void {
-        $processor = get_message_processor('localmail');
-        self::assertNull($processor->config_form([]));
+    public function test_send_message_skips_the_site_course(): void {
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => SITEID])));
+
+        self::assertEquals(1, $this->count_messages());
     }
 
-    public function test_process_form(): void {
-        $processor = get_message_processor('localmail');
-        $form = new \stdClass();
-        $preferences = new \stdClass();
-        self::assertNull($processor->process_form($form, $preferences));
-        self::assertEquals(new \stdClass(), $preferences);
+    public function test_send_message_skips_a_deleted_course(): void {
+        global $DB;
+
+        $eventdata = $this->eventdata(['courseid' => $this->course->id]);
+        self::assertTrue($this->processor->send_message($eventdata));
+        self::assertEquals(1, $this->count_messages());
+
+        // A course can be removed between queueing a notification and delivering it.
+        $missing = $this->eventdata(['courseid' => $this->course->id + 1000]);
+        self::assertFalse($DB->record_exists('course', ['id' => $missing->courseid]));
+
+        self::assertTrue($this->processor->send_message($missing));
+
+        // The skip is diagnosable rather than silent, and asserting it here also stops
+        // the unasserted message failing this test wherever DEBUG_DEVELOPER is on.
+        $this->assertDebuggingCalled();
+        self::assertEquals(1, $this->count_messages());
     }
 
-    public function test_get_default_messaging_settings(): void {
-        $processor = get_message_processor('localmail');
-        self::assertEquals(MESSAGE_DISALLOWED, $processor->get_default_messaging_settings());
+    public function test_send_message_skips_internal_and_deleted_users(): void {
+        global $CFG, $DB;
+
+        $noreply = \core_user::get_user(\core_user::NOREPLY_USER);
+        $guest = \core_user::get_user($CFG->siteguest);
+
+        // Set the flag directly: delete_user() anonymises the record, and the point
+        // here is a user with a real, positive id that local_mail flags as deleted.
+        $deleted = \core_user::get_user($this->getDataGenerator()->create_user()->id);
+        $DB->set_field('user', 'deleted', 1, ['id' => $deleted->id]);
+        $deleted->deleted = 1;
+        self::assertGreaterThan(0, $deleted->id, 'A deleted user keeps its positive id');
+
+        foreach (['noreply sender' => $noreply, 'guest sender' => $guest, 'deleted sender' => $deleted] as $case => $user) {
+            self::assertTrue(
+                $this->processor->send_message($this->eventdata([
+                    'courseid' => $this->course->id,
+                    'userfrom' => $user,
+                ])),
+                $case
+            );
+        }
+        foreach (['noreply recipient' => $noreply, 'guest recipient' => $guest] as $case => $user) {
+            self::assertTrue(
+                $this->processor->send_message($this->eventdata([
+                    'courseid' => $this->course->id,
+                    'userto' => $user,
+                ])),
+                $case
+            );
+        }
+
+        self::assertEquals(0, $this->count_messages());
+
+        // Control: the same call with two real users does deliver.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
     }
 
-    public function test_has_message_preferences(): void {
-        $processor = get_message_processor('localmail');
-        self::assertFalse($processor->has_message_preferences());
+    public function test_send_message_skips_a_self_notification(): void {
+        $self = \core_user::get_user($this->recipient->id);
+
+        self::assertTrue($this->processor->send_message($this->eventdata([
+            'courseid' => $this->course->id,
+            'userfrom' => $self,
+        ])));
+
+        self::assertEquals(0, $this->count_messages());
+
+        // Control: a different sender does deliver.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+    }
+
+    public function test_send_message_ignores_local_mail_notifications(): void {
+        self::assertTrue($this->processor->send_message($this->eventdata([
+            'courseid' => $this->course->id,
+            'component' => 'local_mail',
+        ])));
+
+        self::assertEquals(0, $this->count_messages());
+
+        // Control: the same notification from another component does deliver.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+    }
+
+    /**
+     * Delivery needs a real $USER because the message is assembled in a draft area.
+     *
+     * The transaction assertion is the load-bearing one: a failure that left the
+     * delegated transaction open would poison every later write in the process.
+     *
+     * @return void
+     */
+    public function test_send_message_skips_an_unauthenticated_session(): void {
+        global $CFG, $DB;
+
+        /*
+         * advanced_testcase normally runs each test inside a transaction it rolls back
+         * afterwards, which would make is_transaction_started() true regardless of what
+         * the processor did and the assertion below vacuous. Opting out of that reset
+         * strategy is what makes it measure the plugin.
+         */
+        $this->preventResetByRollback();
+        self::assertFalse($DB->is_transaction_started(), 'The test itself must not run inside a transaction');
+
+        $eventdata = $this->eventdata(['courseid' => $this->course->id]);
+
+        // Control: delivery works while an authenticated user is set.
+        self::assertTrue($this->processor->send_message($eventdata));
+        self::assertEquals(1, $this->count_messages());
+
+        foreach ([null, \core_user::get_user($CFG->siteguest)] as $user) {
+            $this->setUser($user);
+            self::assertTrue($this->processor->send_message($eventdata));
+            $this->assertDebuggingCalled();
+            self::assertEquals(1, $this->count_messages());
+            self::assertFalse($DB->is_transaction_started(), 'A skipped notification must not leave a transaction open');
+        }
     }
 }
