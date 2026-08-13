@@ -28,6 +28,14 @@ the sender's Sent folder, in the same way as any message they send themselves.
 Every skip above is reported with `debugging()` at developer level, so a site can measure
 what it would lose before reducing the other message outputs.
 
+> **Note for administrators.** *Default notification preferences* lists Local Mail as a
+> column for **every** notification provider, including site-wide ones such as backup
+> completion, failed tasks and available updates. Enabling it there has no effect: those
+> notifications carry no course, so they have no mailbox to be delivered into. Moodle offers
+> no way for a message output to declare which providers it serves — the mechanism exists but
+> is reserved for SMS — so the column cannot be hidden. Keep another output enabled for
+> site-wide providers.
+
 By default, all notification preferences are disabled and locked. They need to be enabled at the site administration.
 
 ## Requirements
