@@ -129,6 +129,19 @@ tests/                         PHPUnit only.
   a sender (`message_data::new()` and `message::create()` check no enrolment and no
   capability), so the configured `systemsender` account stands in. Empty setting keeps the
   old skip behaviour, so upgrades change nothing until an admin opts in.
+- **The Default notification preferences matrix advertises this processor for providers it
+  cannot serve, and no plugin-side fix exists.** An administrator can tick Local Mail for a
+  site-wide provider and get silence. Core computes a `supportsprocessor` flag
+  (`message/renderer.php:156-160`) that the template
+  (`default_notification_preferences.mustache:111`) uses to omit the toggle *entirely* — but
+  the check is hardcoded to `$processor->name === 'sms'`, and the whole `message_output`
+  contract (12 methods) is global to the processor, with nothing per-provider. The clean fix
+  is to generalise that flag into a `message_output::supports_provider()` method —
+  `core_message\helper::supports_sms_notifications()` already implements exactly the policy
+  this plugin needs, returning false for `component === 'moodle'` and deferring to a component
+  callback otherwise. **That is a core change and this fork does not patch core**, so the
+  mitigation is the README note for administrators plus the `debugging()` on every skip.
+  Recorded so nobody re-derives it; revisit only if core generalises the hook upstream.
 - **Notification retention deliberately does NOT apply — do not "fix" this.** `message_output`
   offers `cleanup_all_notifications()` and `cleanup_read_notifications()`
   (`message/output/lib.php:131,142`) and this plugin overrides neither, on purpose: once
