@@ -13,33 +13,28 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-// Project implemented by the "Recovery, Transformation and Resilience Plan.
-// Funded by the European Union - Next GenerationEU".
-//
-// Produced by the UNIMOODLE University Group: Universities of
-// Valladolid, Complutense de Madrid, UPV/EHU, León, Salamanca,
-// Illes Balears, Valencia, Rey Juan Carlos, La Laguna, Zaragoza, Málaga,
-// Córdoba, Extremadura, Vigo, Las Palmas de Gran Canaria y Burgos.
 
 /**
- * Version details
+ * Settings for the Local Mail message processor.
  *
  * @package    message_localmail
- * @copyright  2024 Proyecto UNIMOODLE
- * @copyright  2025 Albert Gasset <albertgasset@fsfe.org>
  * @copyright  2026 Anderson Blaine
- * @author     UNIMOODLE Group (Coordinator) <direccion.area.estrategia.digital@uva.es>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026081300;
-$plugin->requires = 2022112800;
-$plugin->supported = [405, 502];
-$plugin->component = 'message_localmail';
-$plugin->dependencies = [
-    'local_mail' => 2025050800,
-];
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.2';
+/*
+ * $settings is created by \core\plugininfo\message::load_settings() before this file is
+ * included, under the section name it links to from Manage message outputs. Creating a new
+ * admin_settingpage here would throw that one away and register a page core never links to.
+ */
+if ($ADMIN->fulltree) {
+    $settings->add(new admin_setting_configtext(
+        'message_localmail/systemsender',
+        new lang_string('systemsender', 'message_localmail'),
+        new lang_string('systemsender_desc', 'message_localmail'),
+        '',
+        PARAM_USERNAME
+    ));
+}

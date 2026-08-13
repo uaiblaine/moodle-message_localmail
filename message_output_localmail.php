@@ -73,14 +73,25 @@ class message_output_localmail extends message_output {
          */
         $courseid = (int) ($eventdata->courseid ?? 0);
         if ($courseid <= 0 || $courseid == SITEID) {
-            // Ignore notifications with no course and notifications in the site course.
+            /*
+             * Local Mail is scoped to courses somebody is enrolled in: core strips the site
+             * course in enrol_get_all_users_courses(), so no user — administrators included —
+             * can hold a site-course mailbox, and a message stored against one would be
+             * invisible in every view. Reported rather than dropped in silence, because the
+             * fewer processors a site leaves enabled, the more this is the whole delivery.
+             */
+            debugging(
+                'Local Mail skipped a notification with no course: '
+                    . $eventdata->component . '/' . $eventdata->name,
+                DEBUG_DEVELOPER
+            );
             return true;
         }
 
         $senderid = (int) ($eventdata->userfrom->id ?? 0);
         $recipientid = (int) ($eventdata->userto->id ?? 0);
-        if ($senderid <= 0 || $recipientid <= 0 || $senderid == $recipientid) {
-            // Ignore notifications from internal users such as noreply, and self-notifications.
+        if ($recipientid <= 0) {
+            // Internal recipients such as noreply have no mailbox to deliver into.
             return true;
         }
 
@@ -97,8 +108,24 @@ class message_output_localmail extends message_output {
 
         try {
             $course = \local_mail\course::get($courseid);
-            $sender = \local_mail\user::get($senderid);
             $recipient = \local_mail\user::get($recipientid);
+            $sender = \local_mail\user::get($senderid);
+            if ($sender->deleted) {
+                /*
+                 * A great many genuinely course-scoped notifications are sent from the
+                 * noreply or support user — course completion, quiz submission
+                 * confirmations, analytics insights — and both arrive here as a deleted
+                 * user, because local_mail returns a deleted stub for any id with no real
+                 * record. Only the sender is a placeholder; the mail itself belongs in the
+                 * course, so substitute the configured account rather than drop it.
+                 * local_mail validates nothing about a sender, so the account needs no
+                 * enrolment and no capability.
+                 */
+                $substituteid = self::get_system_sender_id();
+                if ($substituteid > 0) {
+                    $sender = \local_mail\user::get($substituteid);
+                }
+            }
         } catch (\local_mail\exception $e) {
             // The course was deleted between queueing and delivery. Nothing to deliver to.
             debugging('Local Mail skipped a notification: ' . $e->getMessage(), DEBUG_DEVELOPER);
@@ -109,8 +136,39 @@ class message_output_localmail extends message_output {
          * local_mail returns deleted and guest users with their original, positive id and
          * a deleted flag set, so testing the id alone cannot see them.
          */
-        if ($sender->deleted || $recipient->deleted) {
-            // Ignore notifications involving deleted or guest users.
+        if ($recipient->deleted) {
+            // Ignore notifications to deleted or guest users.
+            return true;
+        }
+
+        if ($sender->deleted) {
+            // No usable sender: either none is configured, or the configured one is gone.
+            debugging(
+                'Local Mail skipped a notification with no usable sender: '
+                    . $eventdata->component . '/' . $eventdata->name,
+                DEBUG_DEVELOPER
+            );
+            return true;
+        }
+
+        if ($sender->id == $recipient->id) {
+            // Ignore self-notifications.
+            return true;
+        }
+
+        /*
+         * A recipient who cannot use mail in the course has no mailbox the message could
+         * appear in — message_search scopes every unscoped listing to the courses
+         * course::get_by_user() returns, so the row would be written and shown to nobody.
+         * The predicate here is the same pair the recipient picker applies, so this only
+         * refuses what the compose form would already have refused.
+         */
+        if (!$recipient->can_use_mail($course)) {
+            debugging(
+                'Local Mail skipped a notification to a user who cannot use mail in the course: '
+                    . $eventdata->component . '/' . $eventdata->name,
+                DEBUG_DEVELOPER
+            );
             return true;
         }
 
@@ -196,6 +254,29 @@ class message_output_localmail extends message_output {
         }
 
         return true;
+    }
+
+    /**
+     * Returns the account configured to stand in for placeholder senders.
+     *
+     * Kept deliberately conservative: with no account configured the processor behaves
+     * exactly as it did before the setting existed, so an upgrade changes nothing until
+     * an administrator opts in.
+     *
+     * @return int User id, or 0 when none is configured or the configured one is unusable.
+     */
+    private static function get_system_sender_id(): int {
+        $username = trim((string) get_config('message_localmail', 'systemsender'));
+        if ($username === '') {
+            return 0;
+        }
+
+        $user = \core_user::get_user_by_username($username, 'id, deleted, suspended');
+        if (!$user || !empty($user->deleted) || !empty($user->suspended)) {
+            return 0;
+        }
+
+        return (int) $user->id;
     }
 
     /**

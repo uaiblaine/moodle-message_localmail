@@ -25,3 +25,5 @@
 $string['notification'] = 'Notificação';
 $string['pluginname'] = 'Correio local';
 $string['privacy:metadata'] = 'O processador de mensagens Correio local não armazena nenhum dado pessoal próprio. Ele entrega as notificações no plugin Local Mail, que as armazena, exporta e exclui sob o seu próprio provedor de privacidade. Como acontece com qualquer mensagem enviada pelo Correio local, uma cópia de cada notificação entregue também permanece visível para o usuário que a enviou.';
+$string['systemsender'] = 'Conta remetente do sistema';
+$string['systemsender_desc'] = 'Nome de usuário da conta a exibir como remetente quando uma notificação de curso vem de um usuário fictício, como o noreply ou o de suporte. Conclusão de curso, confirmações de envio de questionário e insights de análise são todos enviados assim, e são descartados enquanto este campo estiver vazio. A conta não precisa de inscrição nem de capacidade; uma cópia de cada notificação fica na pasta Enviados dela, então prefira uma conta dedicada a uma pessoa real.';

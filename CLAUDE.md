@@ -16,10 +16,14 @@ workflow, one job per supported branch in `.github/workflows/ci.yml` — **updat
 those jobs when `supported` changes**. This repo is mounted into m405, m501 and
 m502 at `message/output/localmail` (see `~/dev/moodle-dev/plugins.conf`).
 
-## This is a fork — documented divergences from the fleet standard
+## This is a fork — and upstream is a reference, not a constraint
 
-Upstream is the UNIMOODLE / Albert Gasset plugin; commits up to `f47c561` are
-theirs. These divergences are **deliberate**; do not "align" them away.
+Upstream is the UNIMOODLE / Albert Gasset plugin; commits up to `f47c561` are theirs. The
+fork evolves on its own terms: **do not shape a design around whether upstream could take
+it back.** The `upstream` remote is for reading what they add, not a target to stay
+mergeable with. Adding settings, tables or dependencies upstream never had is fine.
+
+The decisions below are **deliberate**; do not "align" them away.
 
 - **File headers keep upstream `@copyright` and `@author`.** The fleet header is
   `@copyright 2026 Anderson Blaine` with no `@author`, but this is a GPL work and
@@ -101,9 +105,30 @@ tests/                         PHPUnit only.
   request. `file_save_draft_area_files()` resolves the same `$USER` context on
   local_mail's side, so the write and the read agree — but neither works without
   one.
-- **A recipient who cannot use mail in the course still gets a row.** The message is
-  written but is invisible in their mailbox. This is upstream behaviour, documented
-  in `README.md`; changing it to a skip is a product decision, not a bug fix.
+- **Local Mail cannot represent a site-wide notice, and no setting changes that.**
+  `enrol_get_all_users_courses()` ends its SQL with `WHERE c.id <> SITEID`
+  (`lib/enrollib.php:1135`), *upstream of any capability check*, so granting
+  `local/mail:usemail` on the front page achieves nothing and `can_use_mail(SITEID)` is
+  false for every user including admins. `\local_mail\course::get(SITEID)` throws on top of
+  that, and `message_search::get_base_sql()` scopes every unscoped listing to
+  `course::get_by_user()` — so even a row written by force would be shown to nobody.
+  Supporting system notices means changing local_mail across five layers (scope, search,
+  navigation, capabilities, UI), not patching this plugin.
+- **A user with no active enrolment has no mailbox at all**, not an empty one:
+  `local_mail/view.php:77` gates the whole app and `lib.php:122` hides the navbar envelope.
+  So a skipped delivery to such a user is not a degraded experience, it is the only
+  possible one.
+- **A recipient who cannot use mail in the course is skipped.** The predicate is the same
+  pair the recipient picker uses (active enrolment + `local/mail:usemail`), so the plugin
+  refuses exactly what the compose form refuses. This diverges from upstream, which wrote
+  the row and let it be invisible.
+- **Placeholder senders are substituted, not skipped.** Core sends many course-scoped
+  notifications from noreply or support — course completion
+  (`completion/completion_completion.php:191`), quiz submission confirmations
+  (`mod/quiz/locallib.php:1291`), analytics insights. local_mail validates *nothing* about
+  a sender (`message_data::new()` and `message::create()` check no enrolment and no
+  capability), so the configured `systemsender` account stands in. Empty setting keeps the
+  old skip behaviour, so upgrades change nothing until an admin opts in.
 - **CI tests against `local_mail`'s `main` branch, deliberately.** This plugin has
   been broken twice by Local Mail API changes (see `CHANGELOG.md` 1.1 and 1.2), so a
   red build caused by a *dependency* commit is the intended drift alarm, not a

@@ -4,17 +4,29 @@
 
 This plugin allows using the [Local Mail plugin](https://moodle.org/plugins/local_mail) as a message consumer.
 
-Currently, due to limitations of Local Mail, it only processes notifications that meet the following conditions:
+Local Mail is scoped to courses people are enrolled in, so this plugin only processes
+notifications that meet the following conditions:
 - The notification belongs to a course.
-- Course is not the front page.
-- Sender and recipient are real, non-deleted users.
+- Course is not the front page. Moodle strips the site course in
+  `enrol_get_all_users_courses()`, so nobody — administrators included — can hold a
+  site-course mailbox. Site-wide notices therefore need another output enabled.
+- The recipient is a real, non-deleted user who can use mail in that course, meaning an
+  active enrolment plus `local/mail:usemail`. This is the same pair the Local Mail
+  recipient picker applies, so the plugin refuses exactly what the compose form refuses.
 - Sender and recipient are not the same user.
 
-Two further limitations are worth knowing before enabling it:
-- A message delivered to somebody who cannot use mail in that course is stored but
-  is not visible in their mailbox.
-- Because a notification is delivered as mail, a copy stays in the sender's Sent
-  folder, in the same way as any message they send themselves.
+The sender may be a placeholder. Core sends many genuinely course-scoped notifications —
+course completion, quiz submission confirmations, analytics insights — from the noreply or
+support user. Set **System sender account** in the plugin settings to the username of an
+account to show as the sender for those; while it is empty they are skipped. The account
+needs no enrolment and no capability, and a copy of each notification is kept in its Sent
+folder, so a dedicated account is preferable to a real person.
+
+One more thing worth knowing: because a notification is delivered as mail, a copy stays in
+the sender's Sent folder, in the same way as any message they send themselves.
+
+Every skip above is reported with `debugging()` at developer level, so a site can measure
+what it would lose before reducing the other message outputs.
 
 By default, all notification preferences are disabled and locked. They need to be enabled at the site administration.
 
