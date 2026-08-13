@@ -129,6 +129,16 @@ tests/                         PHPUnit only.
   a sender (`message_data::new()` and `message::create()` check no enrolment and no
   capability), so the configured `systemsender` account stands in. Empty setting keeps the
   old skip behaviour, so upgrades change nothing until an admin opts in.
+- **Notification retention deliberately does NOT apply — do not "fix" this.** `message_output`
+  offers `cleanup_all_notifications()` and `cleanup_read_notifications()`
+  (`message/output/lib.php:131,142`) and this plugin overrides neither, on purpose: once
+  delivered, the row is the user's *mail*, not a notification with a deadline. Purging is the
+  user deleting it, or an administrative policy inside local_mail. There is also no faithful
+  way to implement it here — `local_mail_messages` carries no origin column and no back-link
+  to `{notifications}`, so an age-based purge could not tell a delivered notification from
+  human correspondence. If local_mail ever gains a message origin field, this plugin's whole
+  share of that feature is setting it on `message_data`; the tray, the retention policy, the
+  scheduled task and the UI all belong there.
 - **CI tests against `local_mail`'s `main` branch, deliberately.** This plugin has
   been broken twice by Local Mail API changes (see `CHANGELOG.md` 1.1 and 1.2), so a
   red build caused by a *dependency* commit is the intended drift alarm, not a
