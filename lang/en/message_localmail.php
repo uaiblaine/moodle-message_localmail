@@ -34,3 +34,5 @@
 $string['notification'] = 'Notification';
 $string['pluginname'] = 'Local Mail';
 $string['privacy:metadata'] = 'The Local Mail message processor stores no personal data of its own. It delivers notifications into the Local Mail plugin, which stores, exports and deletes them under its own privacy provider. As with any message sent through Local Mail, a copy of each delivered notification also remains visible to the user it was sent from.';
+$string['systemsender'] = 'System sender account';
+$string['systemsender_desc'] = 'Username of the account to show as the sender when a course notification comes from a placeholder user such as noreply or support. Course completion, quiz submission confirmations and analytics insights are all sent this way, and are skipped entirely while this is empty. The account needs no enrolment and no capability; a copy of each notification is kept in its Sent folder, so a dedicated account is recommended over a real person.';

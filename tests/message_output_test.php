@@ -327,6 +327,7 @@ final class message_output_test extends \advanced_testcase {
 
         self::assertTrue($this->processor->send_message($this->eventdata([])));
 
+        $this->assertDebuggingCalled();
         self::assertEquals(1, $this->count_messages());
     }
 
@@ -336,6 +337,7 @@ final class message_output_test extends \advanced_testcase {
 
         self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => SITEID])));
 
+        $this->assertDebuggingCalled();
         self::assertEquals(1, $this->count_messages());
     }
 
@@ -379,6 +381,8 @@ final class message_output_test extends \advanced_testcase {
                 ])),
                 $case
             );
+            // No substitute sender is configured, so the placeholder is reported and skipped.
+            $this->assertDebuggingCalled();
         }
         foreach (['noreply recipient' => $noreply, 'guest recipient' => $guest] as $case => $user) {
             self::assertTrue(
@@ -421,6 +425,103 @@ final class message_output_test extends \advanced_testcase {
         self::assertEquals(0, $this->count_messages());
 
         // Control: the same notification from another component does deliver.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+    }
+
+    /**
+     * Core sends many genuinely course-scoped notifications from a placeholder user.
+     *
+     * Course completion, quiz submission confirmations and analytics insights all set a real
+     * course id and a noreply or support sender, so without a substitute they are dropped —
+     * which is the single largest category of course mail this processor loses.
+     *
+     * @return void
+     */
+    public function test_send_message_substitutes_a_placeholder_sender(): void {
+        $service = $this->getDataGenerator()->create_user(['username' => 'localmailbot']);
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'userfrom' => \core_user::get_user(\core_user::NOREPLY_USER),
+            'subject' => 'Course completed',
+        ]);
+
+        // Control: with nothing configured the notification is skipped, as before the setting.
+        self::assertTrue($this->processor->send_message($eventdata));
+        $this->assertDebuggingCalled();
+        self::assertEquals(0, $this->count_messages());
+
+        set_config('systemsender', 'localmailbot', 'message_localmail');
+
+        self::assertTrue($this->processor->send_message($eventdata));
+
+        self::assertEquals(1, $this->count_messages());
+        $message = $this->delivered_message();
+        self::assertEquals('Course completed', $message->subject);
+        self::assertEquals((int) $service->id, $message->sender()->id);
+        // The substitute needs no enrolment, so it cannot read its own Sent copy.
+        self::assertFalse((new user($service))->can_use_mail($this->course));
+    }
+
+    public function test_send_message_ignores_an_unusable_system_sender(): void {
+        $eventdata = $this->eventdata([
+            'courseid' => $this->course->id,
+            'userfrom' => \core_user::get_user(\core_user::NOREPLY_USER),
+        ]);
+
+        foreach (['nosuchaccount', ''] as $username) {
+            set_config('systemsender', $username, 'message_localmail');
+            self::assertTrue($this->processor->send_message($eventdata), "username '$username'");
+            $this->assertDebuggingCalled();
+        }
+
+        self::assertEquals(0, $this->count_messages());
+
+        // Control: a real account does deliver, so the assertions above are not vacuous.
+        $this->getDataGenerator()->create_user(['username' => 'localmailbot']);
+        set_config('systemsender', 'localmailbot', 'message_localmail');
+        self::assertTrue($this->processor->send_message($eventdata));
+        self::assertEquals(1, $this->count_messages());
+    }
+
+    /**
+     * A recipient who cannot use mail in the course has no mailbox the message could reach.
+     *
+     * message_search scopes every unscoped listing to course::get_by_user(), so a message
+     * stored against a course the recipient is not actively enrolled in is written and shown
+     * to nobody. Both halves of that predicate are exercised: no enrolment at all, and an
+     * enrolment that exists but is suspended.
+     *
+     * @return void
+     */
+    public function test_send_message_skips_a_recipient_who_cannot_use_mail(): void {
+        $unenrolled = $this->getDataGenerator()->create_user();
+        $suspended = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user(
+            $suspended->id,
+            $this->course->id,
+            'student',
+            'manual',
+            0,
+            0,
+            ENROL_USER_SUSPENDED
+        );
+
+        foreach (['unenrolled' => $unenrolled, 'suspended enrolment' => $suspended] as $case => $user) {
+            self::assertFalse((new user($user))->can_use_mail($this->course), $case);
+            self::assertTrue(
+                $this->processor->send_message($this->eventdata([
+                    'courseid' => $this->course->id,
+                    'userto' => \core_user::get_user($user->id),
+                ])),
+                $case
+            );
+            $this->assertDebuggingCalled();
+        }
+
+        self::assertEquals(0, $this->count_messages());
+
+        // Control: the actively enrolled recipient from the fixture still receives.
         self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
         self::assertEquals(1, $this->count_messages());
     }

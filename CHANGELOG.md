@@ -9,6 +9,20 @@ project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **System sender account** setting. Core sends many genuinely course-scoped notifications
+  from a placeholder user — course completion, quiz submission confirmations, analytics
+  insights all set a real course but send from noreply or support — and those were dropped.
+  Configure a username and they are delivered from that account instead. Empty by default,
+  so an upgrade changes nothing until an administrator opts in.
+
+### Changed
+
+- A recipient who cannot use mail in the course is now skipped instead of having a message
+  written into a mailbox that cannot show it. Local Mail scopes every listing to the courses
+  a user is actively enrolled in, so such a row was visible to nobody.
+- Every skip now reports through `debugging()` at developer level, naming the provider, so a
+  site can measure what it would lose before reducing its other message outputs.
+
 - Declared `$plugin->supported = [405, 502]`. The ceiling tracks the Local Mail
   dependency, which declares the same range, rather than the newest core release.
 - Privacy provider. The plugin stores no personal data of its own, so it declares
