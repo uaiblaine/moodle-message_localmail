@@ -194,6 +194,16 @@ class message_output_localmail extends message_output {
             $data = \local_mail\message_data::new($course, $sender);
             $draftitemid = $data->draftitemid;
             $data->to = [$recipient];
+
+            /*
+             * Record which component asked for this notification, so that Local Mail can
+             * tell generated mail from mail a person wrote. The originating component is
+             * stored rather than this plugin's own name: the transport is not interesting
+             * to the mailbox and would say nothing the day a second one exists. Local Mail
+             * keeps the field write-once, so a reply to this message is not generated mail
+             * and nothing here has to undo it later.
+             */
+            $data->component = $eventdata->component;
             if ($subject !== '') {
                 $data->subject = $subject;
             } else {

@@ -146,12 +146,21 @@ tests/                         PHPUnit only.
   offers `cleanup_all_notifications()` and `cleanup_read_notifications()`
   (`message/output/lib.php:131,142`) and this plugin overrides neither, on purpose: once
   delivered, the row is the user's *mail*, not a notification with a deadline. Purging is the
-  user deleting it, or an administrative policy inside local_mail. There is also no faithful
-  way to implement it here — `local_mail_messages` carries no origin column and no back-link
-  to `{notifications}`, so an age-based purge could not tell a delivered notification from
-  human correspondence. If local_mail ever gains a message origin field, this plugin's whole
-  share of that feature is setting it on `message_data`; the tray, the retention policy, the
-  scheduled task and the UI all belong there.
+  user deleting it, or an administrative policy inside local_mail — which now exists, and this
+  plugin's entire share of it is **one line**: `$data->component = $eventdata->component;` in
+  `send_message()`. The tray, the retention policy, the scheduled task and the UI all live in
+  local_mail. Two things to know about that line. It stores the **originating** component
+  (`mod_forum`, `mod_assign`, `moodle`), never `message_localmail`: the mailbox does not care
+  which transport delivered the mail, and naming the transport would say nothing the day a
+  second one exists. And local_mail keeps the field **write-once** — absent from the record
+  its `update()` builds — so a person replying to a delivered notification is writing their
+  own mail, and nothing here has to undo the stamp afterwards.
+- **`$plugin->dependencies['local_mail']` must not drift below 2026081302.** That is the
+  version that added the `component` field to `message_data`. Against anything older the
+  assignment above creates a PHP 8.2 dynamic property on a class that declares only typed
+  ones — a deprecation that `phpunit --fail-on-warning` turns red in CI and a notice on every
+  delivered notification in production. The pin is the mechanism that prevents installing the
+  two plugins in the wrong order; do not relax it to make a build pass.
 - **CI tests against `local_mail`'s `main` branch, deliberately.** This plugin has
   been broken twice by Local Mail API changes (see `CHANGELOG.md` 1.1 and 1.2), so a
   red build caused by a *dependency* commit is the intended drift alarm, not a
