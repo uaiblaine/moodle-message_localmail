@@ -9,6 +9,17 @@ project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **Message provenance.** Delivered notifications now record the component that asked for
+  them — `mod_forum`, `mod_assign`, `moodle` — on the Local Mail message itself. This is what
+  lets the mailbox tell generated mail from mail a person wrote, and it is the whole of this
+  plugin's share of Local Mail's categories and retention policy; everything else about that
+  feature lives there. The originating component is stored rather than this plugin's own name,
+  because the mailbox does not care which transport delivered the message. Local Mail keeps
+  the field write-once, so a reply to a delivered notification stays ordinary human mail.
+  Requires Local Mail 2026081302 or later, and the declared dependency has been raised
+  accordingly: against an older release the new assignment would create a dynamic property
+  and emit a deprecation on every delivery.
+
 - **System sender account** setting. Core sends many genuinely course-scoped notifications
   from a placeholder user — course completion, quiz submission confirmations, analytics
   insights all set a real course but send from noreply or support — and those were dropped.

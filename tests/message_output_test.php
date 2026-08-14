@@ -157,6 +157,8 @@ final class message_output_test extends \advanced_testcase {
         self::assertEquals(0, $message->attachments);
         self::assertFalse($message->draft);
         self::assertEquals($eventdata->timecreated, $message->time);
+        self::assertEquals('moodle', $message->component);
+        self::assertEquals(message::CATEGORY_UPDATES, $message->category());
         self::assertEquals([], $message->get_references());
         self::assertEquals($this->sender, $message->sender());
         self::assertEquals([$this->recipient], $message->recipients(message::ROLE_TO));
@@ -414,6 +416,38 @@ final class message_output_test extends \advanced_testcase {
         // Control: a different sender does deliver.
         self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
         self::assertEquals(1, $this->count_messages());
+    }
+
+    public function test_send_message_records_the_originating_component(): void {
+        self::assertTrue($this->processor->send_message($this->eventdata([
+            'courseid' => $this->course->id,
+            'component' => 'mod_forum',
+        ])));
+
+        $message = $this->delivered_message();
+
+        /*
+         * The originating component is stored, not this plugin's own name: the mailbox
+         * needs to know which part of Moodle produced the mail, and naming the transport
+         * would say nothing the day a second one exists.
+         */
+        self::assertEquals('mod_forum', $message->component);
+        self::assertEquals(message::CATEGORY_UPDATES, $message->category());
+
+        /*
+         * Control: a message a person composes in the same course through Local Mail's
+         * own API carries no component. Without it, every assertion above would still
+         * hold if Local Mail stamped everything it ever created.
+         */
+        $data = \local_mail\message_data::new($this->course, $this->sender);
+        $data->to = [$this->recipient];
+        $data->subject = 'Written by a person';
+        $data->content = 'Content';
+        $data->format = FORMAT_PLAIN;
+        $human = \local_mail\message::create($data);
+
+        self::assertNull($human->component);
+        self::assertEquals(message::CATEGORY_PRIMARY, $human->category());
     }
 
     public function test_send_message_ignores_local_mail_notifications(): void {
