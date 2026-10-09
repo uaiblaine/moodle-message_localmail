@@ -187,7 +187,9 @@ tests/                         PHPUnit only.
   assignment above creates a PHP 8.2 dynamic property on a class that declares only typed
   ones — a deprecation that `phpunit --fail-on-warning` turns red in CI and a notice on every
   delivered notification in production. The pin is the mechanism that prevents installing the
-  two plugins in the wrong order; do not relax it to make a build pass.
+  two plugins in the wrong order; do not relax it to make a build pass. The pin currently
+  sits higher, at 2026100800 (2.18.1), because that is the first Local Mail supporting 5.3,
+  the ceiling this plugin declares.
 - **CI tests against `local_mail`'s `main` branch, deliberately.** This plugin has
   been broken twice by Local Mail API changes (see `CHANGELOG.md` 1.1 and 1.2), so a
   red build caused by a *dependency* commit is the intended drift alarm, not a

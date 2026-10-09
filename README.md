@@ -43,7 +43,7 @@ By default, all notification preferences are disabled and locked. They need to b
 | | |
 |---|---|
 | Moodle | 4.5 through 5.3 |
-| Local Mail | v2.15 or later |
+| Local Mail | v2.18.1 or later |
 
 The range tracks what Local Mail itself supports, since that is the real ceiling;
 Local Mail requires Moodle 4.5, and so does this plugin.

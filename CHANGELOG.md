@@ -5,14 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com), and this
 project adheres to [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [1.3.0] - 2026-10-09
 
 ### Added
 
-- **Moodle 5.3 support.** `$plugin->supported` rises to `[405, 503]`, following Local
-  Mail, which reached 5.3 by merging upstream 2.18; a 5.03 CI job runs the full PHP x DB
-  matrix and 5.02 drops to one database. `$plugin->requires` rises to Moodle 4.5 for the
-  same reason: Local Mail no longer installs on anything older.
+- **Moodle 4.5 to 5.3.** Declared `$plugin->supported = [405, 503]`. The ceiling tracks
+  the Local Mail dependency, which declares the same range since it merged upstream 2.18,
+  rather than the newest core release; a 5.03 CI job runs the full PHP x DB matrix and the
+  older branches run one database. `$plugin->requires` rises to Moodle 4.5 for the same
+  reason: Local Mail no longer installs on anything older. The declared dependency is
+  Local Mail 2026100800 (2.18.1), the first release that supports 5.3.
 
 - **Message provenance.** Delivered notifications now record the component that asked for
   them — `mod_forum`, `mod_assign`, `moodle` — on the Local Mail message itself. This is what
@@ -21,15 +23,20 @@ project adheres to [Semantic Versioning](https://semver.org).
   feature lives there. The originating component is stored rather than this plugin's own name,
   because the mailbox does not care which transport delivered the message. Local Mail keeps
   the field write-once, so a reply to a delivered notification stays ordinary human mail.
-  Requires Local Mail 2026081302 or later, and the declared dependency has been raised
-  accordingly: against an older release the new assignment would create a dynamic property
-  and emit a deprecation on every delivery.
+  Requires Local Mail 2026081302 or later: against an older release the new assignment
+  would create a dynamic property and emit a deprecation on every delivery.
 
 - **System sender account** setting. Core sends many genuinely course-scoped notifications
   from a placeholder user — course completion, quiz submission confirmations, analytics
   insights all set a real course but send from noreply or support — and those were dropped.
   Configure a username and they are delivered from that account instead. Empty by default,
   so an upgrade changes nothing until an administrator opts in.
+
+- Privacy provider. The plugin stores no personal data of its own, so it declares
+  `null_provider`: every row it produces is written through the Local Mail API into
+  tables that plugin's own provider already exports and deletes.
+- Brazilian Portuguese language pack.
+- GitHub Actions CI, one job per supported Moodle branch.
 
 ### Changed
 
@@ -38,14 +45,6 @@ project adheres to [Semantic Versioning](https://semver.org).
   a user is actively enrolled in, so such a row was visible to nobody.
 - Every skip now reports through `debugging()` at developer level, naming the provider, so a
   site can measure what it would lose before reducing its other message outputs.
-
-- Declared `$plugin->supported = [405, 502]`. The ceiling tracks the Local Mail
-  dependency, which declares the same range, rather than the newest core release.
-- Privacy provider. The plugin stores no personal data of its own, so it declares
-  `null_provider`: every row it produces is written through the Local Mail API into
-  tables that plugin's own provider already exports and deletes.
-- Brazilian Portuguese language pack.
-- GitHub Actions CI, one job per supported Moodle branch.
 
 ### Fixed
 
