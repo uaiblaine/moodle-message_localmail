@@ -10,11 +10,11 @@ core notifications into the `local_mail` plugin's per-course mailbox. It owns
 **no database tables** — every row it produces is written through the Local Mail
 API into that plugin's tables and file areas. It has no settings, no
 capabilities, no web services, no templates and no JavaScript. Supports Moodle
-**4.5 through 5.2** (`$plugin->requires = 2022112800`,
-`$plugin->supported = [405, 502]`). CI is the moodle-an-hochschulen reusable
+**4.5 through 5.3** (`$plugin->requires = 2024100700`,
+`$plugin->supported = [405, 503]`). CI is the moodle-an-hochschulen reusable
 workflow, one job per supported branch in `.github/workflows/ci.yml` — **update
-those jobs when `supported` changes**. This repo is mounted into m405, m501 and
-m502 at `message/output/localmail` (see `~/dev/moodle-dev/plugins.conf`).
+those jobs when `supported` changes**. This repo is mounted into m405, m501, m502
+and m503 at `message/output/localmail` (see `~/dev/moodle-dev/plugins.conf`).
 
 ## Agent orchestration budget (fleet rule, repeated here on purpose)
 
@@ -97,7 +97,7 @@ tests/                         PHPUnit only.
 ## Architecture gotchas
 
 - **The supported ceiling is the dependency's, not core's.** `local_mail` declares
-  `supported = [405, 502]`; this plugin declares the same. Bumping this plugin to
+  `supported = [405, 503]`; this plugin declares the same. Bumping this plugin to
   a newer branch before `local_mail` gets there mounts it on a stack where its own
   dependency cannot install.
 - **`$eventdata->courseid` can be `null`.** `\core\message\message` declares

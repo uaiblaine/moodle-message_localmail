@@ -9,6 +9,11 @@ project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **Moodle 5.3 support.** `$plugin->supported` rises to `[405, 503]`, following Local
+  Mail, which reached 5.3 by merging upstream 2.18; a 5.03 CI job runs the full PHP x DB
+  matrix and 5.02 drops to one database. `$plugin->requires` rises to Moodle 4.5 for the
+  same reason: Local Mail no longer installs on anything older.
+
 - **Message provenance.** Delivered notifications now record the component that asked for
   them — `mod_forum`, `mod_assign`, `moodle` — on the Local Mail message itself. This is what
   lets the mailbox tell generated mail from mail a person wrote, and it is the whole of this
