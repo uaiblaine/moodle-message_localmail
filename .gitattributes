@@ -3,11 +3,17 @@
 # versioned for development/CI/collaboration but are NOT needed to run the
 # plugin on a Moodle site, so they are stripped from the release zip.
 #
-# Two deliberate exceptions to the fleet baseline, both upstream artefacts:
+# Three deliberate exceptions to the fleet baseline, the last two upstream artefacts:
 #   - tests/ SHIPS in the release (Moodle convention).
 #   - LICENSES/ SHIPS: it is upstream's REUSE-style licence text, referenced by
 #     README.md, and removing it from the package would break that reference.
 #   - CONTRIBUTING.md SHIPS for the same reason — README.md links to it.
+#
+# LICENSE and COPYING.txt both ship: the plugins directory wants a licence file
+# in the package, and MAH's completeness checker wants COPYING.txt by name.
+# Every lang pack except en stays in git but not in the zip, upstream's four
+# included: the plugins directory accepts only English strings in a package,
+# and translations reach sites through AMOS.
 #
 # Verify with:  git check-attr export-ignore -- <path>
 # (a path marked "set" is excluded from the archive; "unspecified" ships).
@@ -21,4 +27,10 @@
 /.phpcsignore         export-ignore
 /CLAUDE.md            export-ignore
 /docs                 export-ignore
+/lang/ca              export-ignore
+/lang/es              export-ignore
+/lang/eu              export-ignore
+/lang/gl              export-ignore
+/lang/pt_br           export-ignore
+/mutations            export-ignore
 /phpcs.xml            export-ignore
