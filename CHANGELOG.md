@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com), and this
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [1.3.1] - 2026-10-23
+
+### Fixed
+
+- The README named the moodle.org release of Local Mail as the dependency and called any
+  2.18.1 or later enough. This plugin requires this fork's Local Mail, version 2026100800
+  or later: the moodle.org release lacks the message component field written on every
+  delivery and carries a lower version number, so Moodle refuses the pair. The README now
+  names `local_mail`, the fork and the version.
+
+### Added
+
+- A `LICENSE` file beside `COPYING.txt`, as the plugins directory requires a licence file
+  in the package.
+- README sections *Settings*, *Capabilities* (none of its own), *Data stored* (no tables,
+  no personal data of its own; delivered notifications are Local Mail messages under Local
+  Mail's provider) and *Translations*.
+- `tests/marketplace_readiness_test.php`, the fleet's file-reading check of the plugins
+  directory guidelines, and `mutations/gates.conf` (left out of the package).
+
+### Changed
+
+- Every language pack except English stays in the repository but leaves the release
+  package: `lang/pt_br` and upstream's `lang/ca`, `lang/es`, `lang/eu` and `lang/gl`. The
+  plugins directory accepts only English strings in a package, and translations reach
+  sites through AMOS.
+
 ## [1.3.0] - 2026-10-09
 
 ### Added

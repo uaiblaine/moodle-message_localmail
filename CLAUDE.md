@@ -8,7 +8,7 @@ repeat them here. This file keeps only what is true for this plugin.
 Plugin context: a Moodle **message output** plugin ("Local Mail") that delivers
 core notifications into the `local_mail` plugin's per-course mailbox. It owns
 **no database tables** — every row it produces is written through the Local Mail
-API into that plugin's tables and file areas. It has no settings, no
+API into that plugin's tables and file areas. It has one setting (`systemsender`), no
 capabilities, no web services, no templates and no JavaScript. Supports Moodle
 **4.5 through 5.3** (`$plugin->requires = 2024100700`,
 `$plugin->supported = [405, 503]`). CI is the moodle-an-hochschulen reusable
@@ -66,6 +66,9 @@ The decisions below are **deliberate**; do not "align" them away.
   en ↔ pt_br lockstep rule applies to those two packs only; the four upstream
   packs will lag on new keys, which is harmless — Moodle merges each language
   over `en`, so a missing key falls back rather than rendering an identifier.
+  They stay in git but, like `lang/pt_br`, are `export-ignore`d: the plugins
+  directory accepts only English strings in a package (translations go through
+  AMOS), and `tests/marketplace_readiness_test.php` fails on a pack that ships.
 - **`LICENSES/` and `CONTRIBUTING.md` are upstream artefacts and ship in the
   release zip**, because `README.md` links to both. They are not `export-ignore`d.
 - **`phpcs.xml` keeps `moodle-extra`**, which is upstream's opt-in and is strictly
@@ -91,7 +94,8 @@ message_output_localmail.php   The entire plugin: one message_output subclass.
 db/install.php                 Inserts the message_processors row. No schema.
 classes/privacy/provider.php   null_provider — no data of its own.
 lang/{ca,en,es,eu,gl,pt_br}/   Two user-facing strings plus the privacy reason.
-tests/                         PHPUnit only.
+tests/                         PHPUnit only, including the plugins directory readiness test.
+mutations/gates.conf           Mutation spec for the packaging guards (export-ignored).
 ```
 
 ## Architecture gotchas

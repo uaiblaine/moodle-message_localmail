@@ -2,7 +2,8 @@
 
 [![ci](https://github.com/uaiblaine/moodle-message_localmail/actions/workflows/ci.yml/badge.svg)](https://github.com/uaiblaine/moodle-message_localmail/actions/workflows/ci.yml)
 
-This plugin allows using the [Local Mail plugin](https://moodle.org/plugins/local_mail) as a message consumer.
+This plugin allows using the Local Mail plugin (`local_mail`) as a message consumer. It needs
+this fork's build of Local Mail, not the one on moodle.org: see *Requirements*.
 
 Local Mail is scoped to courses people are enrolled in, so this plugin only processes
 notifications that meet the following conditions:
@@ -43,10 +44,47 @@ By default, all notification preferences are disabled and locked. They need to b
 | | |
 |---|---|
 | Moodle | 4.5 through 5.3 |
-| Local Mail | v2.18.1 or later |
+| Local Mail (`local_mail`) | [uaiblaine/moodle-local_mail](https://github.com/uaiblaine/moodle-local_mail) 2.18.1 (version 2026100800) or later |
 
 The range tracks what Local Mail itself supports, since that is the real ceiling;
 Local Mail requires Moodle 4.5, and so does this plugin.
+
+The dependency is declared in `version.php` and must be the fork named above. Each
+delivered notification records its originating component on the Local Mail message, a
+field the [moodle.org release of Local Mail](https://moodle.org/plugins/local_mail) does
+not have, and that release's version number is below the one this plugin requires, so
+Moodle refuses to install the pair.
+
+## Settings
+
+- `message_localmail/systemsender` (*System sender account*, empty by default): the
+  username of the account shown as the sender of course notifications that core sends
+  from a placeholder user such as noreply or support. While it is empty those
+  notifications are skipped.
+
+Delivery itself is enabled per notification provider under *Site administration >
+General > Messaging > Default notification preferences*.
+
+## Capabilities
+
+The plugin defines no capabilities. It reads Local Mail's `local/mail:usemail` to decide
+whether a recipient can use mail in the course.
+
+## Data stored
+
+The plugin has no database tables and stores no personal data of its own; its privacy
+provider declares exactly that. Each notification it delivers becomes an ordinary Local
+Mail message, written through the Local Mail API into Local Mail's own tables
+(`local_mail_messages`, `local_mail_message_users`, `local_mail_message_refs`,
+`local_mail_message_labels`) and file area, with the originating component recorded on
+the message. Those messages stay in the recipient's inbox and in the sender's Sent folder
+until the users delete them or Local Mail's retention policy removes them, and Local
+Mail's privacy provider exports and deletes them on a data request. A data request to
+this plugin itself therefore exports nothing and a deletion removes nothing.
+
+An attachment is copied into a draft area of the user running the delivery and that draft
+area is deleted before the delivery returns, delivered or not. The only stored setting is
+the system sender's username.
 
 ## Installation
 
@@ -56,6 +94,13 @@ the web root moved into `public/`).
 
 For general instructions on installing plugins see:
 https://docs.moodle.org/en/Installing_plugins
+
+## Translations
+
+The English strings ship in the package. The Catalan, Spanish, Basque and Galician
+translations from upstream and the Brazilian Portuguese translation of this fork are kept
+in this repository (`lang/`) and reach sites through [AMOS](https://lang.moodle.org/), as
+the plugins directory requires; they are left out of the release package.
 
 ## Contributing
 
@@ -81,4 +126,5 @@ Implemented by the "Recovery, Transformation and Resilience Plan". Funded by the
 This plugin is distributed under the terms of the GNU General Public License,
 version 3 or later.
 
-See the [LICENSES/GPL-3.0-or-later.txt](LICENSES/GPL-3.0-or-later.txt) file for details.
+See the [LICENSE](LICENSE) file for details; the same text ships as `COPYING.txt`, and
+upstream's REUSE copy as [LICENSES/GPL-3.0-or-later.txt](LICENSES/GPL-3.0-or-later.txt).
