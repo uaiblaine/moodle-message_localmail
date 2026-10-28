@@ -157,15 +157,15 @@ class message_output_localmail extends message_output {
         }
 
         /*
-         * A recipient who cannot use mail in the course has no mailbox the message could
+         * A recipient who cannot read mail in the course has no mailbox the message could
          * appear in — message_search scopes every unscoped listing to the courses
          * course::get_by_user() returns, so the row would be written and shown to nobody.
-         * The predicate here is the same pair the recipient picker applies, so this only
-         * refuses what the compose form would already have refused.
+         * Reading is enough: in a frozen course, which keeps local/mail:viewmail and loses
+         * local/mail:usemail, the recipient cannot write but still reads what arrives.
          */
-        if (!$recipient->can_use_mail($course)) {
+        if (!$recipient->can_read_mail($course)) {
             debugging(
-                'Local Mail skipped a notification to a user who cannot use mail in the course: '
+                'Local Mail skipped a notification to a user who cannot read mail in the course: '
                     . $eventdata->component . '/' . $eventdata->name,
                 DEBUG_DEVELOPER
             );

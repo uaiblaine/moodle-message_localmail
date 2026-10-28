@@ -44,7 +44,7 @@ By default, all notification preferences are disabled and locked. They need to b
 | | |
 |---|---|
 | Moodle | 4.5 through 5.3 |
-| Local Mail (`local_mail`) | [uaiblaine/moodle-local_mail](https://github.com/uaiblaine/moodle-local_mail) 2.18.1 (version 2026100800) or later |
+| Local Mail (`local_mail`) | [uaiblaine/moodle-local_mail](https://github.com/uaiblaine/moodle-local_mail) version 2026102901 or later |
 
 The range tracks what Local Mail itself supports, since that is the real ceiling;
 Local Mail requires Moodle 4.5, and so does this plugin.

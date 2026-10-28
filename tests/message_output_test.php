@@ -542,7 +542,7 @@ final class message_output_test extends \advanced_testcase {
         );
 
         foreach (['unenrolled' => $unenrolled, 'suspended enrolment' => $suspended] as $case => $user) {
-            self::assertFalse((new user($user))->can_use_mail($this->course), $case);
+            self::assertFalse((new user($user))->can_read_mail($this->course), $case);
             self::assertTrue(
                 $this->processor->send_message($this->eventdata([
                     'courseid' => $this->course->id,
@@ -556,6 +556,25 @@ final class message_output_test extends \advanced_testcase {
         self::assertEquals(0, $this->count_messages());
 
         // Control: the actively enrolled recipient from the fixture still receives.
+        self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
+        self::assertEquals(1, $this->count_messages());
+    }
+
+    /**
+     * A frozen course keeps its mail readable, so a notification still reaches it.
+     *
+     * Context freezing denies local/mail:usemail, a write capability, and leaves
+     * local/mail:viewmail: the recipient cannot write in the course but reads what arrives.
+     *
+     * @return void
+     */
+    public function test_send_message_delivers_in_a_frozen_course(): void {
+        set_config('contextlocking', 1);
+        $this->course->get_context()->set_locked(true);
+        course::cache()->purge();
+
+        self::assertFalse($this->recipient->can_use_mail($this->course));
+        self::assertTrue($this->recipient->can_read_mail($this->course));
         self::assertTrue($this->processor->send_message($this->eventdata(['courseid' => $this->course->id])));
         self::assertEquals(1, $this->count_messages());
     }

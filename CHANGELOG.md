@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com), and this
 project adheres to [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+
+- **A notification reaches a recipient who can read mail in the course but not write**,
+  version 2026100902, such as a student in a frozen course. Local Mail 2026102901 split its
+  course access into reading (`local/mail:viewmail`) and writing (`local/mail:usemail`), and
+  context freezing denies the second; delivery now checks the first, so a frozen course's
+  notifications land in its read-only mailbox instead of being skipped. Requires `local_mail`
+  2026102901.
+
 ## [1.3.1] - 2026-10-23
 
 ### Fixed
