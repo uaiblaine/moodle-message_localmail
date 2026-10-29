@@ -11,9 +11,10 @@ notifications that meet the following conditions:
 - Course is not the front page. Moodle strips the site course in
   `enrol_get_all_users_courses()`, so nobody — administrators included — can hold a
   site-course mailbox. Site-wide notices therefore need another output enabled.
-- The recipient is a real, non-deleted user who can use mail in that course, meaning an
-  active enrolment plus `local/mail:usemail`. This is the same pair the Local Mail
-  recipient picker applies, so the plugin refuses exactly what the compose form refuses.
+- The recipient is a real, non-deleted user who can read mail in that course, meaning an
+  active enrolment plus `local/mail:viewmail` or `local/mail:usemail`. Reading is enough:
+  a frozen course denies every write capability but keeps its mail readable, so its
+  notifications still arrive there, read only.
 - Sender and recipient are not the same user.
 
 The sender may be a placeholder. Core sends many genuinely course-scoped notifications —
@@ -44,7 +45,7 @@ By default, all notification preferences are disabled and locked. They need to b
 | | |
 |---|---|
 | Moodle | 4.5 through 5.3 |
-| Local Mail (`local_mail`) | [uaiblaine/moodle-local_mail](https://github.com/uaiblaine/moodle-local_mail) version 2026102901 or later |
+| Local Mail (`local_mail`) | [uaiblaine/moodle-local_mail](https://github.com/uaiblaine/moodle-local_mail) [v2.18.3](https://github.com/uaiblaine/moodle-local_mail/releases/tag/v2.18.3) or later (version 2026102901 or later) |
 
 The range tracks what Local Mail itself supports, since that is the real ceiling;
 Local Mail requires Moodle 4.5, and so does this plugin.
