@@ -7,6 +7,10 @@ project adheres to [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-29
+
+Version 2026100902. Requires Local Mail 2.18.3 (version 2026102901 or later).
+
 ### Changed
 
 - **A notification reaches a recipient who can read mail in the course but not write**,
@@ -15,6 +19,8 @@ project adheres to [Semantic Versioning](https://semver.org).
   context freezing denies the second; delivery now checks the first, so a frozen course's
   notifications land in its read-only mailbox instead of being skipped. Requires `local_mail`
   2026102901.
+- The README states the delivery rule as reading, not using, mail in the course, and names
+  Local Mail v2.18.3 as the dependency.
 
 ## [1.3.1] - 2026-10-23
 

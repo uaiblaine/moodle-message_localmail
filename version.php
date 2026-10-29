@@ -42,4 +42,4 @@ $plugin->dependencies = [
     'local_mail' => 2026102901,
 ];
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.3.1';
+$plugin->release = '1.4.0';
